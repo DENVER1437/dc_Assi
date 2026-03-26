@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>html,body{background:#0b1326!important;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Packet Transmission Simulator | OSI Model</title>
+  <meta name="description" content="Visually simulate how a message travels through the OSI and TCP/IP network layers — from Application to Physical — with animated packets, segments, and binary streams." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Shared top-nav bar */
+    #topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 58px;
+      background: rgba(8,12,16,0.88);
+      border-bottom: 1px solid rgba(0,212,255,0.18);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px 0 205px; /* right of side-tracker */
+      z-index: 500;
+    }
+    .nav-brand {
+      font-family: var(--font-head);
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      color: var(--accent-blue);
+      text-decoration: none;
+      text-shadow: var(--glow-blue);
+      white-space: nowrap;
+    }
+    .nav-links { display: flex; gap: 26px; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.25s, text-shadow 0.25s;
+      padding: 4px 0;
+      border-bottom: 1px solid transparent;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--accent-blue);
+      text-shadow: var(--glow-blue);
+      border-bottom-color: var(--accent-blue);
+    }
+    /* Push main content below the nav */
+    main { padding-top: 68px; }
+    @media (max-width: 768px) {
+      #topnav { padding: 0 16px 0 16px; }
+      main { padding-top: 68px; }
+    }
+  </style>
+
+  <!-- Preload video for instant playback -->
+  <link rel="preload" href="background-video.mp4" as="video" type="video/mp4"/>
+
+  <!-- Prevent video from affecting page layout -->
+  <style>
+    #bg-video {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      min-width: 100vw !important;
+      min-height: 100vh !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: cover !important;
+      z-index: -1 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      /* CRITICAL: Prevent video from stopping rendering */
+      animation: videoLoop 1s infinite;
+    }
+
+    @keyframes videoLoop {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.99; }
+    }
+
+    #video-bg-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      overflow: hidden;
+      background: #0b1326;
+    }
+
+    body {
+      overflow-x: hidden;
+      opacity: 0;
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+  </style>
+  <!-- Force video autoplay — runs before DOM is fully loaded -->
+  <script>
+  window.addEventListener('load', function() {
+    var videos = document.querySelectorAll('video');
+    videos.forEach(function(v) {
+      v.muted = true;
+      v.volume = 0;
+      v.play().catch(function() {
+        // If blocked, play on first click anywhere
+        document.addEventListener('click', function tryPlay() {
+          v.play().catch(function(){});
+          document.removeEventListener('click', tryPlay);
+        }, { once: true });
+      });
+    });
+  });
+
+  // Resume video after tab switch
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      var videos = document.querySelectorAll('video');
+      videos.forEach(function(v) {
+        if (v.paused) v.play().catch(function(){});
+      });
+    }
+  });
+  </script>
+</head>
+<body>
+
+  <!-- Background video container (Step 2/6) -->
+  <div id="video-bg-container">
+    <video
+      id="bg-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      disablePictureInPicture
+      disableRemotePlayback
+      x-webkit-airplay="deny"
+    >
+      <source src="background-video.mp4" type="video/mp4"/>
+      <source src="./background-video.mp4" type="video/mp4"/>
+    </video>
+    <div class="video-dark-overlay"></div>
+  </div>
+
+  <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(8,12,16,0.65); z-index:-1; pointer-events:none;"></div>
+
+  <!-- ═══════ TOP NAVIGATION ═══════ -->
+  <header id="topnav">
+    <a href="index.html" class="nav-brand">Network Packet Simulator</a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="simulator.html" class="active">Simulator</a></li>
+        <li><a href="learn.html">Learn Layers</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ═══════ SIDE PROGRESS TRACKER ═══════ -->
+  <nav id="progress-tracker" aria-label="Simulation Progress">
+    <div class="tracker-title">OSI LAYERS</div>
+    <ul id="layer-steps">
+      <li class="step" data-layer="1" data-target="section-application" onclick="sidebarScrollTo('section-application')"><span class="step-num">7</span><span class="step-name">Application</span></li>
+      <li class="step" data-layer="2" data-target="osi-model" onclick="sidebarScrollTo('osi-model')"><span class="step-num">6</span><span class="step-name">Presentation</span></li>
+      <li class="step" data-layer="3" data-target="osi-model" onclick="sidebarScrollTo('osi-model')"><span class="step-num">5</span><span class="step-name">Session</span></li>
+      <li class="step" data-layer="4" data-target="section-transport" onclick="sidebarScrollTo('section-transport')"><span class="step-num">4</span><span class="step-name">Transport</span></li>
+      <li class="step" data-layer="5" data-target="section-network" onclick="sidebarScrollTo('section-network')"><span class="step-num">3</span><span class="step-name">Network</span></li>
+      <li class="step" data-layer="6" data-target="section-datalink" onclick="sidebarScrollTo('section-datalink')"><span class="step-num">2</span><span class="step-name">Data Link</span></li>
+      <li class="step" data-layer="7" data-target="section-physical" onclick="sidebarScrollTo('section-physical')"><span class="step-num">1</span><span class="step-name">Physical</span></li>
+      <li class="step" data-layer="8" data-target="section-transmission" onclick="sidebarScrollTo('section-transmission')"><span class="step-num">📡</span><span class="step-name">Transmit</span></li>
+      <li class="step" data-layer="9" data-target="section-receiver" onclick="sidebarScrollTo('section-receiver')"><span class="step-num">📥</span><span class="step-name">Receiver</span></li>
+    </ul>
+    <div class="progress-bar-wrap"><div id="progress-bar"></div></div>
+  </nav>
+
+  <main>
+
+    <!-- ═══════ SECTION 1: HERO ═══════ -->
+    <section id="hero" class="section">
+      <div class="hero-glow-ring"></div>
+      <div class="hero-content">
+        <div class="terminal-badge">[ NETWORK SIM v1.0 ]</div>
+        <h1>Network Packet<br /><span class="gradient-text">Transmission Simulator</span></h1>
+        <p class="hero-sub">See how your message travels through the OSI layers — from application data to raw binary bits and back.</p>
+
+        <div class="input-panel" id="input-panel">
+          <div class="input-wrap">
+            <span class="input-prompt">&gt;_</span>
+            <input type="text" id="message-input" placeholder="Type your message here…" maxlength="60" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="btn-row">
+            <button id="simulate-btn" class="btn btn-primary" onclick="startSimulation()">
+              <span class="btn-icon">⚡</span> SIMULATE
+            </button>
+            <button id="reset-btn" class="btn btn-secondary" onclick="resetSimulation()" style="display:none">
+              <span class="btn-icon">↺</span> RESET
+            </button>
+          </div>
+          <p id="error-msg" class="error-msg" style="display:none">⚠ Please enter a message to simulate.</p>
+
+          <!-- ─── SIMULATION PROGRESS BAR + PACKET COUNTER ─── -->
+          <div id="sim-progress-wrap" style="display:none;margin-top:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span id="layer-counter-label" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--accent-blue);letter-spacing:0.08em;">Layer 1 of 7</span>
+              <span id="packet-badge" style="font-family:var(--font-mono);font-size:0.68rem;padding:2px 9px;border-radius:12px;background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.35);color:var(--accent-green);">Packets: 0</span>
+            </div>
+            <div style="height:3px;background:rgba(0,212,255,0.1);border-radius:2px;overflow:hidden;box-shadow:0 0 6px rgba(0,212,255,0.15);">
+              <div id="sim-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-green));box-shadow:0 0 8px var(--accent-blue),0 0 16px rgba(0,212,255,0.4);transition:width 0.6s ease;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-hint" id="scroll-hint" style="display:none">▼ Scroll down to watch the simulation ▼</div>
+    </section>
+
+    <!-- ═══════ SECTION 2: OSI vs TCP/IP MODEL DIAGRAM ═══════ -->
+    <section id="osi-model" class="section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">MODEL OVERVIEW</span>
+        <h2>OSI vs TCP/IP Models</h2>
+      </div>
+      <div class="explanation-card">📚 <strong>Why Two Models?</strong> The OSI model is a <em>theoretical</em> 7-layer framework. The TCP/IP model is what the internet actually uses — it collapses OSI's 7 layers into 4 practical layers.</div>
+      <div class="model-diagram">
+        <div class="model-col">
+          <div class="model-title">OSI MODEL</div>
+          <div class="osi-layer" id="osi-7" data-layer="7">7 — Application</div>
+          <div class="osi-layer" id="osi-6" data-layer="6">6 — Presentation</div>
+          <div class="osi-layer" id="osi-5" data-layer="5">5 — Session</div>
+          <div class="osi-layer" id="osi-4" data-layer="4">4 — Transport</div>
+          <div class="osi-layer" id="osi-3" data-layer="3">3 — Network</div>
+          <div class="osi-layer" id="osi-2" data-layer="2">2 — Data Link</div>
+          <div class="osi-layer" id="osi-1" data-layer="1">1 — Physical</div>
+        </div>
+        <div class="model-arrows">
+          <div class="arrow-map">↔</div>
+          <div class="arrow-map map-brace top3">↔</div>
+          <div class="arrow-map">↔</div>
+          <div class="arrow-map">↔</div>
+          <div class="arrow-map">↔</div>
+        </div>
+        <div class="model-col">
+          <div class="model-title">TCP/IP MODEL</div>
+          <div class="tcp-layer" style="grid-row:span 3">Application</div>
+          <div class="tcp-layer">Transport</div>
+          <div class="tcp-layer">Internet</div>
+          <div class="tcp-layer" style="grid-row:span 2">Network Access</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION 3: APPLICATION LAYER ═══════ -->
+    <section id="section-application" class="section sim-section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">LAYER 7</span>
+        <h2>Application Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Application</span>
+      </div>
+      <div class="explanation-card">🖥️ <strong>What it does:</strong> The Application layer is where users interact. It handles high-level protocols (HTTP, FTP, DNS). This is what <em>you</em> see — the raw message.</div>
+      <div class="layer-visual" id="app-layer-visual">
+        <div class="terminal-box">
+          <div class="terminal-header"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> application_layer.exe</div>
+          <div class="terminal-body">
+            <span class="term-label">Original Message: </span><span id="app-message" class="typed-text"></span><span class="cursor">█</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION 4: TRANSPORT LAYER ═══════ -->
+    <section id="section-transport" class="section sim-section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">LAYER 4</span>
+        <h2>Transport Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Transport</span>
+      </div>
+      <div class="explanation-card">🔀 <strong>What it does:</strong> The Transport layer breaks the message into <em>segments</em>. TCP guarantees delivery and ordering. Each chunk gets a sequence number so data can be reassembled at the destination.</div>
+      <div class="layer-visual" id="transport-layer-visual">
+        <div class="segment-label">Splitting message into 3-character segments:</div>
+        <div id="segments-container" class="segments-container"></div>
+      </div>
+
+      <!-- ─── ENCAPSULATION DIAGRAM ─── -->
+      <div id="encap-diagram" style="display:none;margin-top:24px">
+        <div class="terminal-badge" style="margin-bottom:14px;display:inline-block;">[ ENCAPSULATION PROCESS ]</div>
+        <div id="encap-layers" style="position:relative;max-width:560px;">
+          <div id="encap-data" style="
+            font-family:var(--font-mono);font-size:0.85rem;
+            color:var(--accent-yellow);text-align:center;
+            padding:10px 18px;border:1px solid rgba(255,204,0,0.4);
+            border-radius:6px;background:rgba(255,204,0,0.06);
+            text-shadow:0 0 8px var(--accent-yellow);
+            transition:all 0.5s ease;
+          ">[ DATA ]</div>
+
+          <!-- TCP Header wrapper -->
+          <div id="encap-tcp" style="
+            display:none;margin-top:8px;padding:3px;
+            border:2px solid #ffcc00;border-radius:8px;
+            opacity:0;transform:scaleX(0.7);transition:all 0.6s cubic-bezier(0.34,1.2,0.64,1);
+            background:rgba(255,204,0,0.04);
+          ">
+            <div style="font-family:var(--font-mono);font-size:0.6rem;color:#ffcc00;padding:2px 8px;letter-spacing:0.1em;">TCP HEADER</div>
+            <div style="text-align:center;padding:6px;font-family:var(--font-mono);font-size:0.8rem;color:var(--accent-yellow);">[ DATA ]</div>
+          </div>
+
+          <!-- IP Header wrapper -->
+          <div id="encap-ip" style="
+            display:none;margin-top:8px;padding:3px;
+            border:2px solid var(--accent-blue);border-radius:10px;
+            opacity:0;transform:scaleX(0.7);transition:all 0.6s cubic-bezier(0.34,1.2,0.64,1);
+            background:rgba(0,212,255,0.03);
+          ">
+            <div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--accent-blue);padding:2px 8px;letter-spacing:0.1em;">IP HEADER</div>
+            <div style="border:2px solid #ffcc00;border-radius:6px;margin:2px;padding:2px 0;
+              text-align:center;font-family:var(--font-mono);font-size:0.75rem;color:#ffcc00;">TCP HEADER | DATA</div>
+          </div>
+
+          <!-- Frame Header + CRC wrapper -->
+          <div id="encap-frame" style="
+            display:none;margin-top:8px;padding:3px;
+            border:2px solid var(--accent-green);border-radius:12px;
+            opacity:0;transform:scaleX(0.7);transition:all 0.6s cubic-bezier(0.34,1.2,0.64,1);
+            background:rgba(57,255,20,0.02);
+          ">
+            <div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--accent-green);padding:2px 8px;letter-spacing:0.1em;">FRAME HEADER + CRC</div>
+            <div style="border:2px solid var(--accent-blue);border-radius:8px;margin:2px;padding:2px 0;
+              text-align:center;font-family:var(--font-mono);font-size:0.72rem;color:var(--accent-blue);">IP HEADER | TCP | DATA</div>
+          </div>
+
+          <!-- Binary Signal wrapper -->
+          <div id="encap-binary" style="
+            display:none;margin-top:8px;padding:3px;
+            border:2px solid #b400ff;border-radius:14px;
+            opacity:0;transform:scaleX(0.7);transition:all 0.6s cubic-bezier(0.34,1.2,0.64,1);
+            background:rgba(180,0,255,0.03);
+          ">
+            <div style="font-family:var(--font-mono);font-size:0.6rem;color:#b400ff;padding:2px 8px;letter-spacing:0.1em;">BINARY SIGNAL</div>
+            <div style="border:2px solid var(--accent-green);border-radius:10px;margin:2px;padding:2px 0;
+              text-align:center;font-family:var(--font-mono);font-size:0.68rem;color:var(--accent-green);letter-spacing:0.04em;">0110 1000 1101 0010 0101 0110...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION 5: NETWORK LAYER ═══════ -->
+    <section id="section-network" class="section sim-section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">LAYER 3</span>
+        <h2>Network Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Internet</span>
+      </div>
+      <div class="explanation-card">📦 <strong>What it does:</strong> The Network layer wraps each segment into a <em>packet</em> with source and destination IP addresses. Routers operate at this layer to forward packets across networks.</div>
+      <div class="layer-visual">
+        <div id="packets-container" class="packets-container"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION 6: DATA LINK LAYER ═══════ -->
+    <section id="section-datalink" class="section sim-section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">LAYER 2</span>
+        <h2>Data Link Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Network Access</span>
+      </div>
+      <div class="explanation-card">🔗 <strong>What it does:</strong> The Data Link layer wraps packets into <em>frames</em> with a MAC header and a CRC checksum for error detection. The CRC is calculated as <code>data.length % 2</code>.</div>
+      <div class="layer-visual">
+        <div id="frames-container" class="frames-container"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION 7: PHYSICAL LAYER ═══════ -->
+    <section id="section-physical" class="section sim-section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">LAYER 1</span>
+        <h2>Physical Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Network Access</span>
+      </div>
+      <div class="explanation-card">⚡ <strong>What it does:</strong> The Physical layer converts all data into raw <em>binary bits</em> (0s and 1s) and transmits them over the wire as electrical signals, light pulses, or radio waves.</div>
+      <div class="layer-visual">
+        <div id="binary-stream" class="binary-stream"></div>
+        <div id="char-binary-map" class="char-binary-map"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION 8: NETWORK TRANSMISSION ═══════ -->
+    <section id="section-transmission" class="section sim-section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">TRANSMISSION</span>
+        <h2>Network Transmission</h2>
+      </div>
+      <div class="explanation-card">🌐 <strong>What it does:</strong> Packets travel across the physical network through routers. Packets can be <em>lost</em> (20% chance) or <em>corrupted</em> (30% chance). TCP handles retransmission automatically.</div>
+      <div class="layer-visual">
+        <div class="network-path">
+          <div class="net-node" id="node-a">
+            <div class="node-icon">💻</div>
+            <div class="node-label">Node A<br />(Sender)</div>
+          </div>
+          <div class="net-wire" id="wire-1"><div class="wire-line"></div></div>
+          <div class="net-node" id="router-1">
+            <div class="node-icon">📡</div>
+            <div class="node-label">Router 1</div>
+          </div>
+          <div class="net-wire" id="wire-2"><div class="wire-line"></div></div>
+          <div class="net-node" id="router-2">
+            <div class="node-icon">📡</div>
+            <div class="node-label">Router 2</div>
+          </div>
+          <div class="net-wire" id="wire-3"><div class="wire-line"></div></div>
+          <div class="net-node" id="node-b">
+            <div class="node-icon">🖥️</div>
+            <div class="node-label">Node B<br />(Receiver)</div>
+          </div>
+        </div>
+        <div id="packet-mover" class="packet-mover" style="display:none">PKT</div>
+        <div id="transmission-log" class="transmission-log"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION 9: RECEIVER SIDE ═══════ -->
+    <section id="section-receiver" class="section sim-section" style="display:none">
+      <div class="section-header">
+        <span class="section-badge">RECEIVER</span>
+        <h2>Receiver Side</h2>
+      </div>
+      <div class="explanation-card">✅ <strong>What it does:</strong> The receiver reassembles all received segments in order to reconstruct the original message. This is the reverse of the sending process — from Physical up to Application layer.</div>
+      <div class="layer-visual">
+        <div class="recv-label">Segments arriving at receiver:</div>
+        <div id="recv-segments" class="recv-segments"></div>
+        <div class="recv-join-arrow" id="recv-join-arrow" style="display:none">⬇ Reconstructing… ⬇</div>
+        <div id="recv-message" class="recv-message" style="display:none"></div>
+      </div>
+      <div id="sim-complete" style="display:none" class="sim-complete">
+        <div class="complete-icon">✅</div>
+        <div class="complete-text">Simulation Complete!</div>
+        <div id="sim-conclusion" class="explanation-card" style="margin-bottom: 24px; text-align: left; background: rgba(0,212,255,0.04); font-size: 0.9rem;"></div>
+        <div class="btn-row" style="margin-top: 20px;">
+          <button class="btn btn-primary" onclick="replaySimulation()">
+            <span class="btn-icon">▶</span> REPLAY
+          </button>
+          <button class="btn btn-secondary" onclick="resetSimulation()">
+            <span class="btn-icon">↺</span> CLEAR / NEW INPUT
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    /* ── Sidebar scroll-to helper ── */
+    function sidebarScrollTo(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      if (el.style.display === 'none' || el.style.display === '') {
+        // Section not yet revealed — show hint tooltip near sidebar
+        const existing = document.getElementById('sidebar-hint');
+        if (existing) return; // already showing
+
+        const hint = document.createElement('div');
+        hint.id = 'sidebar-hint';
+        hint.textContent = '[ Run simulation first ]';
+        hint.style.cssText = [
+          'position:fixed',
+          'left:198px',
+          'top:50%',
+          'transform:translateY(-50%)',
+          'background:rgba(8,12,16,0.92)',
+          'border:1px solid rgba(57,255,20,0.45)',
+          'border-radius:6px',
+          'padding:7px 14px',
+          'font-family:var(--font-mono)',
+          'font-size:0.72rem',
+          'letter-spacing:0.08em',
+          'color:var(--accent-green)',
+          'text-shadow:0 0 8px rgba(57,255,20,0.6)',
+          'box-shadow:0 0 14px rgba(57,255,20,0.18)',
+          'z-index:600',
+          'pointer-events:none',
+          'opacity:0',
+          'transition:opacity 0.25s ease',
+          'white-space:nowrap',
+        ].join(';');
+
+        document.body.appendChild(hint);
+        // Fade in
+        void hint.offsetHeight;
+        hint.style.opacity = '1';
+
+        // Fade out & remove after 2 seconds
+        setTimeout(() => {
+          hint.style.opacity = '0';
+          setTimeout(() => { hint.remove(); }, 280);
+        }, 2000);
+        return;
+      }
+
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /* ── Scrollspy: highlight sidebar item as user scrolls ── */
+    (function () {
+      const SIM_SECTIONS = [
+        { id: 'section-application', step: 1 },
+        { id: 'osi-model',           step: 2 },
+        { id: 'section-transport',   step: 4 },
+        { id: 'section-network',     step: 5 },
+        { id: 'section-datalink',    step: 6 },
+        { id: 'section-physical',    step: 7 },
+        { id: 'section-transmission',step: 8 },
+        { id: 'section-receiver',    step: 9 },
+      ];
+      let ticking = false;
+      window.addEventListener('scroll', () => {
+        if (ticking) return;
+        requestAnimationFrame(() => {
+          let current = -1;
+          SIM_SECTIONS.forEach(s => {
+            const el = document.getElementById(s.id);
+            if (el && el.style.display !== 'none' && el.getBoundingClientRect().top <= 130)
+              current = s.step;
+          });
+          if (current > 0) {
+            document.querySelectorAll('#layer-steps .step').forEach((el, i) => {
+              el.classList.remove('active');
+              if (i === current - 1) el.classList.add('active');
+            });
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }, { passive: true });
+    })();
+  </script>
+
+  <script>
+    // ── Active navigation state ──
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === currentPage) {
+        link.classList.add('active');
+        link.style.color = '#00d4ff';
+        link.style.textShadow = '0 0 10px rgba(0, 212, 255, 0.5)';
+      }
+    });
+
+    // ── Ensure video keeps playing ──
+    function ensureVideoPlaying() {
+      const video = document.querySelector('#bg-video');
+      if (video) {
+        if (video.paused) {
+          video.play().catch(e => console.log('Video play error:', e));
+        }
+        if (video.ended) {
+          video.currentTime = 0;
+          video.play();
+        }
+        video.style.display = 'block';
+        video.style.visibility = 'visible';
+        video.style.opacity = '1';
+      }
+    }
+    setInterval(ensureVideoPlaying, 100);
+    document.addEventListener('scroll', ensureVideoPlaying);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) ensureVideoPlaying();
+    });
+  </script>
+
+  <!-- Hidden video reload button — appears on triple-click of navbar logo -->
+  <button
+    id="video-reload-btn"
+    onclick="(function(){
+      var v = document.getElementById('bg-video');
+      if(v){ v.load(); v.play().catch(()=>{}); }
+    })()"
+    style="
+      position: fixed;
+      bottom: 8px;
+      right: 8px;
+      background: transparent;
+      border: none;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      opacity: 0;
+      z-index: 9999;
+    "
+    title="Reload background video"
+    aria-hidden="true"
+  ></button>
+
+  <script>
+// ═══════════════════════════════════════════════
+//  BULLETPROOF VIDEO BACKGROUND MANAGER
+// ═══════════════════════════════════════════════
+(function() {
+  'use strict';
+
+  const VIDEO_ID      = 'bg-video';
+  const FADE_DURATION = 1500;  // ms for opacity transition
+  const RETRY_DELAY   = 2000;  // ms between retries
+  const MAX_RETRIES   = 5;
+
+  let retryCount    = 0;
+  let isPlaying     = false;
+  let visibilityTimer = null;
+
+  function getVideo() {
+    return document.getElementById(VIDEO_ID);
+  }
+
+  // ── Show video with smooth fade-in ──────────────────────────────
+  function fadeInVideo(video) {
+    video.style.opacity = '1';
+    isPlaying = true;
+  }
+
+  // ── Hide video (fallback CSS shows through) ──────────────────────
+  function fadeOutVideo(video) {
+    video.style.opacity = '0';
+    isPlaying = false;
+  }
+
+  // ── Attempt to play video ────────────────────────────────────────
+  function attemptPlay(video) {
+    if (!video) return;
+
+    // Ensure muted (browsers require this)
+    video.muted  = true;
+    video.volume = 0;
+
+    const playPromise = video.play();
+
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          // Success — fade in
+          fadeInVideo(video);
+          retryCount = 0;
+        })
+        .catch((err) => {
+          // Autoplay blocked — try with user interaction workaround
+          console.warn('[BgVideo] Autoplay blocked:', err.message);
+          handleAutoplayBlocked(video);
+        });
+    } else {
+      // Old browser — just try to fade in
+      fadeInVideo(video);
+    }
+  }
+
+  // ── Handle autoplay block ────────────────────────────────────────
+  function handleAutoplayBlocked(video) {
+    // Strategy 1: Retry after short delay (works after user interacts)
+    if (retryCount < MAX_RETRIES) {
+      retryCount++;
+      setTimeout(() => attemptPlay(video), RETRY_DELAY);
+    }
+
+    // Strategy 2: Play on first user interaction anywhere on page
+    const interactionEvents = ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'];
+    
+    function onUserInteraction() {
+      attemptPlay(video);
+      // Remove all listeners after first interaction
+      interactionEvents.forEach(evt =>
+        document.removeEventListener(evt, onUserInteraction)
+      );
+    }
+
+    interactionEvents.forEach(evt =>
+      document.addEventListener(evt, onUserInteraction, { once: true, passive: true })
+    );
+  }
+
+  // ── Handle video errors ──────────────────────────────────────────
+  function handleVideoError(video) {
+    console.warn('[BgVideo] Video error — using CSS fallback');
+    fadeOutVideo(video);
+    // CSS fallback (#video-fallback-bg) automatically shows through
+  }
+
+  // ── Handle tab visibility changes ────────────────────────────────
+  function handleVisibilityChange() {
+    const video = getVideo();
+    if (!video) return;
+
+    if (document.hidden) {
+      // Tab hidden — pause to save resources
+      video.pause();
+    } else {
+      // Tab visible again — resume
+      clearTimeout(visibilityTimer);
+      visibilityTimer = setTimeout(() => {
+        if (video.paused) {
+          attemptPlay(video);
+        }
+      }, 300);
+    }
+  }
+
+  // ── Handle video stalling/freezing ──────────────────────────────
+  function handleVideoStall(video) {
+    console.warn('[BgVideo] Video stalled — attempting recovery');
+    const currentTime = video.currentTime;
+    video.load();
+    video.currentTime = currentTime;
+    attemptPlay(video);
+  }
+
+  // ── Main initialization ──────────────────────────────────────────
+  function initVideoBackground() {
+    const video = getVideo();
+    if (!video) {
+      console.warn('[BgVideo] Video element not found');
+      return;
+    }
+
+    // Event: Video ready to play
+    video.addEventListener('canplay', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video can play through without buffering
+    video.addEventListener('canplaythrough', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video loaded enough to start
+    video.addEventListener('loadeddata', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video ended (shouldn't happen with loop, but just in case)
+    video.addEventListener('ended', () => {
+      video.currentTime = 0;
+      attemptPlay(video);
+    });
+
+    // Event: Video error
+    video.addEventListener('error', () => handleVideoError(video));
+
+    // Event: Video stalled
+    video.addEventListener('stalled', () => handleVideoStall(video));
+
+    // Event: Video waiting/buffering
+    video.addEventListener('waiting', () => {
+      // Briefly allow CSS fallback to show if buffering takes too long
+      setTimeout(() => {
+        if (video.readyState < 3 && !isPlaying) {
+          // Still buffering after 3s — show CSS fallback
+          fadeOutVideo(video);
+        }
+      }, 3000);
+    });
+
+    // Tab visibility handling
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Window focus handling (extra safety)
+    window.addEventListener('focus', () => {
+      const v = getVideo();
+      if (v && v.paused) {
+        setTimeout(() => attemptPlay(v), 200);
+      }
+    });
+
+    // Initial play attempt
+    attemptPlay(video);
+
+    // Fallback: Try again after 1s, 3s, 6s regardless
+    [1000, 3000, 6000].forEach(delay => {
+      setTimeout(() => {
+        const v = getVideo();
+        if (v && v.paused && !document.hidden) {
+          attemptPlay(v);
+        }
+      }, delay);
+    });
+  }
+
+  // ── Start when DOM is ready ──────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVideoBackground);
+  } else {
+    initVideoBackground();
+  }
+
+})();
+  </script>
+</body>
+</html>

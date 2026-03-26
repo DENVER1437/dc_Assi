@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>html,body{background:#0b1326!important;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learn Layers | Network Packet Simulator</title>
+  <meta name="description" content="Learn the OSI and TCP/IP network layers — from Application to Physical — with detailed explanations, protocol lists, and visual diagrams." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ═══════════════════════════════════════════
+       LEARN LAYERS — Page-specific styles
+       Reuses all CSS variables and base classes
+       from styles.css, adds only learn-specific
+    ═══════════════════════════════════════════ */
+
+    /* ── TOP NAV (same as home + index) ──────── */
+    #topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 58px;
+      background: rgba(8,12,16,0.9);
+      border-bottom: 1px solid rgba(0,212,255,0.18);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px 0 205px;
+      z-index: 500;
+    }
+    .nav-brand {
+      font-family: var(--font-head);
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      color: var(--accent-blue);
+      text-decoration: none;
+      text-shadow: var(--glow-blue);
+      white-space: nowrap;
+    }
+    .nav-links { display: flex; gap: 26px; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.25s, text-shadow 0.25s;
+      padding: 4px 0;
+      border-bottom: 1px solid transparent;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--accent-blue);
+      text-shadow: var(--glow-blue);
+      border-bottom-color: var(--accent-blue);
+    }
+
+    /* ─── 3D TOPOLOGY CANVAS ──────────────────── */
+    #net-canvas { opacity: 1; }
+
+    /* ── LEFT SIDEBAR (scrollspy) ─────────────── */
+    #learn-sidebar {
+      position: fixed;
+      left: 0; top: 58px;
+      height: calc(100vh - 58px);
+      width: 185px;
+      background: rgba(8,12,16,0.92);
+      border-right: 1px solid var(--border);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+    #learn-sidebar::-webkit-scrollbar { width: 3px; }
+    #learn-sidebar::-webkit-scrollbar-thumb { background: var(--accent-blue); }
+
+    .sidebar-title {
+      font-family: var(--font-head);
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      color: var(--accent-blue);
+      text-align: center;
+      padding: 14px 12px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #sidebar-nav { list-style: none; padding: 6px 0; }
+
+    .snav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+    .snav-item:hover { background: rgba(0,212,255,0.05); }
+    .snav-item.active {
+      border-left-color: var(--accent-blue);
+      background: rgba(0,212,255,0.07);
+    }
+    .snav-badge {
+      font-family: var(--font-head);
+      font-size: 0.55rem;
+      letter-spacing: 0.04em;
+      min-width: 26px;
+      text-align: center;
+      padding: 2px 4px;
+      border-radius: 3px;
+      background: rgba(0,212,255,0.1);
+      color: var(--accent-blue);
+      border: 1px solid rgba(0,212,255,0.2);
+      transition: all 0.3s;
+    }
+    .snav-item.active .snav-badge {
+      background: rgba(0,212,255,0.18);
+      box-shadow: 0 0 6px rgba(0,212,255,0.4);
+    }
+    .snav-label {
+      font-family: var(--font-ui);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      transition: color 0.3s;
+      line-height: 1.3;
+    }
+    .snav-item.active .snav-label { color: var(--accent-blue); }
+
+    /* ── MAIN CONTENT AREA ───────────────────── */
+    #learn-main {
+      position: relative;
+      z-index: 1;
+      margin-left: 185px;
+      padding: 80px 40px 80px 36px;
+      max-width: calc(100% - 185px);
+    }
+
+    /* ── PAGE HERO ───────────────────────────── */
+    .learn-hero {
+      text-align: center;
+      padding: 40px 0 60px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 60px;
+    }
+    .learn-hero-badge {
+      font-family: var(--font-head);
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      color: var(--accent-green);
+      text-shadow: var(--glow-green);
+      margin-bottom: 16px;
+    }
+    .learn-hero h1 {
+      font-family: var(--font-head);
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .learn-hero p {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      max-width: 560px;
+      margin: 0 auto;
+      line-height: 1.8;
+    }
+
+    /* ── CONTENT SECTIONS ────────────────────── */
+    .learn-section {
+      margin-bottom: 70px;
+      scroll-margin-top: 80px;
+    }
+
+    .learn-section .section-header {
+      margin-bottom: 24px;
+    }
+
+    /* ── CONTENT CARD (matches explanation-card style) ── */
+    .content-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .content-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+
+    /* ── BULLET LIST ─────────────────────────── */
+    .term-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .term-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .term-list li::before {
+      content: '▸';
+      color: var(--accent-blue);
+      flex-shrink: 0;
+      margin-top: 2px;
+      font-size: 0.7rem;
+    }
+    .term-list li strong { color: var(--accent-yellow); font-style: normal; }
+    .term-list li em    { color: var(--accent-blue); font-style: normal; }
+
+    /* ── OSI STACK VISUAL ────────────────────── */
+    .osi-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    .osi-stack-row {
+      display: flex;
+      align-items: stretch;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(0,212,255,0.15);
+      transition: all 0.3s;
+    }
+    .osi-stack-row:hover {
+      border-color: var(--accent-blue);
+      box-shadow: var(--glow-blue);
+      transform: translateX(4px);
+    }
+    .osi-num {
+      font-family: var(--font-head);
+      font-size: 0.7rem;
+      width: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,212,255,0.1);
+      color: var(--accent-blue);
+      flex-shrink: 0;
+      border-right: 1px solid rgba(0,212,255,0.15);
+    }
+    .osi-label {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      padding: 10px 16px;
+      color: #c0d4e4;
+    }
+    .osi-desc {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      border-left: 1px solid rgba(0,212,255,0.08);
+    }
+
+    /* Colors per layer */
+    .osi-stack-row:nth-child(1) .osi-num { color: var(--accent-green); background: rgba(57,255,20,0.08); }
+    .osi-stack-row:nth-child(2) .osi-num { color: #7ee8fa; }
+    .osi-stack-row:nth-child(3) .osi-num { color: #9b59ff; }
+    .osi-stack-row:nth-child(4) .osi-num { color: var(--accent-yellow); }
+    .osi-stack-row:nth-child(5) .osi-num { color: #ff8c42; }
+    .osi-stack-row:nth-child(6) .osi-num { color: var(--accent-blue); }
+    .osi-stack-row:nth-child(7) .osi-num { color: var(--accent-red); }
+
+    /* ── PROTOCOL TAG CHIPS ───────────────────── */
+    .proto-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 5px;
+      letter-spacing: 0.06em;
+      border: 1px solid;
+    }
+    .chip-blue   { color: var(--accent-blue);   background: rgba(0,212,255,0.07);   border-color: rgba(0,212,255,0.3); }
+    .chip-green  { color: var(--accent-green);  background: rgba(57,255,20,0.06);   border-color: rgba(57,255,20,0.25); }
+    .chip-yellow { color: var(--accent-yellow); background: rgba(255,204,0,0.06);   border-color: rgba(255,204,0,0.3); }
+    .chip-purple { color: #b058d8;              background: rgba(180,0,255,0.07);   border-color: rgba(180,0,255,0.25); }
+    .chip-red    { color: var(--accent-red);    background: rgba(255,45,85,0.07);   border-color: rgba(255,45,85,0.25); }
+
+    /* ── RESPONSIBILITY GRID ─────────────────── */
+    .resp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .resp-item {
+      background: rgba(0,212,255,0.04);
+      border: 1px solid rgba(0,212,255,0.12);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #8ab4cc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .resp-item::before { content: '◈'; color: var(--accent-blue); font-size: 0.6rem; }
+
+    /* ── COMPARE TABLE ───────────────────────── */
+    .compare-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0;
+      align-items: start;
+      margin-top: 10px;
+    }
+    .compare-col {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .compare-title {
+      font-family: var(--font-head);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-align: center;
+      padding: 8px;
+      margin-bottom: 4px;
+    }
+    .compare-title.blue  { color: var(--accent-blue); }
+    .compare-title.green { color: var(--accent-green); }
+    .compare-layer {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 9px 14px;
+      border-radius: 5px;
+      text-align: center;
+      border: 1px solid transparent;
+    }
+    .cl-blue  { background: rgba(0,212,255,0.08); border-color: rgba(0,212,255,0.2); color: var(--accent-blue); }
+    .cl-green { background: rgba(57,255,20,0.06); border-color: rgba(57,255,20,0.2); color: var(--accent-green); }
+
+    .compare-lines {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      padding: 34px 12px 0;
+    }
+    .cline {
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    /* Helper to span rows visually */
+    .cl-span2, .cl-span3 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+    }
+    .cl-span3 { min-height: calc(3 * 36px + 2 * 5px); }
+    .cl-span2 { min-height: calc(2 * 36px + 1 * 5px); }
+
+    /* ── LAYER DESCRIPTION CARDS (TCP/IP section) ─── */
+    .layer-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .lcard {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .lcard:hover {
+      border-color: rgba(0,212,255,0.35);
+      box-shadow: 0 0 14px rgba(0,212,255,0.06);
+    }
+    .lcard-num {
+      font-family: var(--font-head);
+      font-size: 1.3rem;
+      font-weight: 900;
+      min-width: 36px;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .lcard-body { flex: 1; }
+    .lcard-title {
+      font-family: var(--font-head);
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    .lcard-text {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #7a9cb8;
+      line-height: 1.7;
+    }
+
+    /* ── ADDRESS CARDS ────────────────────────── */
+    .addr-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .addr-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+    .addr-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .addr-card:nth-child(1)::before { background: linear-gradient(90deg, var(--accent-blue), transparent); }
+    .addr-card:nth-child(2)::before { background: linear-gradient(90deg, var(--accent-green), transparent); }
+    .addr-card:nth-child(3)::before { background: linear-gradient(90deg, var(--accent-yellow), transparent); }
+    .addr-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .addr-icon { font-size: 1.8rem; margin-bottom: 10px; }
+    .addr-title {
+      font-family: var(--font-head);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      margin-bottom: 10px;
+    }
+    .addr-card:nth-child(1) .addr-title { color: var(--accent-blue); }
+    .addr-card:nth-child(2) .addr-title { color: var(--accent-green); }
+    .addr-card:nth-child(3) .addr-title { color: var(--accent-yellow); }
+    .addr-text {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #7a9cb8;
+      line-height: 1.7;
+    }
+    .addr-example {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      margin-top: 10px;
+      padding: 6px 10px;
+      background: rgba(0,212,255,0.05);
+      border: 1px solid rgba(0,212,255,0.12);
+      border-radius: 5px;
+      color: var(--accent-blue);
+    }
+    .addr-card:nth-child(2) .addr-example { color: var(--accent-green); background: rgba(57,255,20,0.05); border-color: rgba(57,255,20,0.12); }
+    .addr-card:nth-child(3) .addr-example { color: var(--accent-yellow); background: rgba(255,204,0,0.05); border-color: rgba(255,204,0,0.12); }
+
+    /* ── SECTION DIVIDERS ────────────────────── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 60px 0;
+    }
+
+    /* ── RESPONSIVE ──────────────────────────── */
+    @media (max-width: 900px) {
+      #topnav { padding: 0 16px; }
+      #learn-sidebar { display: none; }
+      #learn-main { margin-left: 0; padding: 76px 18px 60px; max-width: 100%; }
+      .compare-wrap { grid-template-columns: 1fr; }
+      .compare-lines { display: none; }
+    }
+    @media (max-width: 600px) {
+      .resp-grid { grid-template-columns: 1fr; }
+      .addr-cards { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <!-- Preload video for instant playback -->
+  <link rel="preload" href="background-video.mp4" as="video" type="video/mp4"/>
+
+  <!-- Prevent video from affecting page layout -->
+  <style>
+    #bg-video {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      min-width: 100vw !important;
+      min-height: 100vh !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: cover !important;
+      z-index: -1 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      /* CRITICAL: Prevent video from stopping rendering */
+      animation: videoLoop 1s infinite;
+    }
+
+    @keyframes videoLoop {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.99; }
+    }
+
+    #video-bg-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      overflow: hidden;
+      background: #0b1326;
+    }
+
+    body {
+      overflow-x: hidden;
+      opacity: 0;
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+  </style>
+  <!-- Force video autoplay — runs before DOM is fully loaded -->
+  <script>
+  window.addEventListener('load', function() {
+    var videos = document.querySelectorAll('video');
+    videos.forEach(function(v) {
+      v.muted = true;
+      v.volume = 0;
+      v.play().catch(function() {
+        // If blocked, play on first click anywhere
+        document.addEventListener('click', function tryPlay() {
+          v.play().catch(function(){});
+          document.removeEventListener('click', tryPlay);
+        }, { once: true });
+      });
+    });
+  });
+
+  // Resume video after tab switch
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      var videos = document.querySelectorAll('video');
+      videos.forEach(function(v) {
+        if (v.paused) v.play().catch(function(){});
+      });
+    }
+  });
+  </script>
+</head>
+<body>
+
+  <!-- Background video container (Step 2/6) -->
+  <div id="video-bg-container">
+    <video
+      id="bg-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      disablePictureInPicture
+      disableRemotePlayback
+      x-webkit-airplay="deny"
+    >
+      <source src="background-video.mp4" type="video/mp4"/>
+      <source src="./background-video.mp4" type="video/mp4"/>
+    </video>
+    <div class="video-dark-overlay"></div>
+  </div>
+
+  <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(8,12,16,0.65); z-index:-1; pointer-events:none;"></div>
+
+  <!-- ═══════ TOP NAV ═══════ -->
+  <header id="topnav">
+    <a href="index.html" class="nav-brand">Network Packet Simulator</a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="simulator.html">Simulator</a></li>
+        <li><a href="learn.html" class="active">Learn Layers</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ═══════ LEFT SIDEBAR ═══════ -->
+  <aside id="learn-sidebar">
+    <div class="sidebar-title">OSI &amp; TCP/IP</div>
+    <ul id="sidebar-nav">
+      <li><a class="snav-item" href="#s-intro">    <span class="snav-badge">INTRO</span><span class="snav-label">Protocol Layering</span></a></li>
+      <li><a class="snav-item" href="#s-osi">      <span class="snav-badge">OSI</span>  <span class="snav-label">OSI Overview</span></a></li>
+      <li><a class="snav-item" href="#s-l7">       <span class="snav-badge">L7</span>   <span class="snav-label">Application</span></a></li>
+      <li><a class="snav-item" href="#s-l6">       <span class="snav-badge">L6</span>   <span class="snav-label">Presentation</span></a></li>
+      <li><a class="snav-item" href="#s-l5">       <span class="snav-badge">L5</span>   <span class="snav-label">Session</span></a></li>
+      <li><a class="snav-item" href="#s-l4">       <span class="snav-badge">L4</span>   <span class="snav-label">Transport</span></a></li>
+      <li><a class="snav-item" href="#s-l3">       <span class="snav-badge">L3</span>   <span class="snav-label">Network</span></a></li>
+      <li><a class="snav-item" href="#s-l2">       <span class="snav-badge">L2</span>   <span class="snav-label">Data Link</span></a></li>
+      <li><a class="snav-item" href="#s-l1">       <span class="snav-badge">L1</span>   <span class="snav-label">Physical</span></a></li>
+      <li><a class="snav-item" href="#s-tcpip">    <span class="snav-badge">TCP</span>  <span class="snav-label">TCP/IP Suite</span></a></li>
+      <li><a class="snav-item" href="#s-tcplayers"><span class="snav-badge">LAYS</span><span class="snav-label">TCP/IP Layers</span></a></li>
+      <li><a class="snav-item" href="#s-addr">     <span class="snav-badge">ADDR</span><span class="snav-label">Addressing</span></a></li>
+    </ul>
+  </aside>
+
+  <!-- ═══════ MAIN CONTENT ═══════ -->
+  <main id="learn-main">
+
+    <!-- PAGE HERO -->
+    <div class="learn-hero">
+      <div class="learn-hero-badge">[ REFERENCE GUIDE ]</div>
+      <h1>OSI &amp; TCP/IP <span class="gradient-text">Layer Reference</span></h1>
+      <p>A complete breakdown of how network communication is structured — from high-level applications to raw physical signals.</p>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 1 — PROTOCOL LAYERING INTRO
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-intro">
+      <div class="section-header">
+        <span class="section-badge">INTRO</span>
+        <h2>Protocol Layering</h2>
+      </div>
+      <div class="explanation-card">
+        📡 <strong>What is a Protocol?</strong> A protocol defines the <em>rules</em> all communicating parties must follow — like a language two machines agree to speak.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li>Simple communication needs only <strong>one protocol</strong>. Complex communication divides tasks into <em>layers</em> — one protocol per layer.</li>
+          <li>Protocol layering enables us to divide <strong>complex tasks</strong> into smaller, simpler tasks — each layer handles one concern.</li>
+          <li>Each layer acts as a <em>black box</em> — it takes inputs from the layer above, produces outputs for the layer below.</li>
+          <li>Each layer on the <strong>sending side</strong> uses the services of the layer directly below it.</li>
+          <li>Each layer on the <strong>receiving side</strong> passes data upward, stripping its own header/trailer at each step.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 2 — OSI MODEL OVERVIEW
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-osi">
+      <div class="section-header">
+        <span class="section-badge">OSI MODEL</span>
+        <h2>OSI Model Overview</h2>
+      </div>
+      <div class="explanation-card">
+        🏛️ <strong>OSI = Open Systems Interconnection.</strong> Introduced in the late 1970s. Not a protocol — it is a <em>model</em> for designing flexible, robust, interoperable networks.
+      </div>
+      <div class="content-card" style="margin-bottom:20px">
+        <ul class="term-list">
+          <li>Has <strong>7 layers</strong>, each defining part of the process of moving information across a network.</li>
+          <li><em>Peer-to-peer process:</em> Processes on each machine communicate logically at the same layer level — even though data physically travels down one stack and up the other.</li>
+          <li>Each layer <strong>adds a header</strong> (encapsulation) while sending; strips it while receiving (decapsulation).</li>
+        </ul>
+      </div>
+      <div class="content-card" style="background: transparent; border: none; padding: 10px 0;">
+        <div class="osi-stack">
+          <div class="osi-stack-row">
+            <span class="osi-num">7</span>
+            <span class="osi-label">Application</span>
+            <span class="osi-desc">User interfaces, HTTP, FTP</span>
+          </div>
+          <div class="osi-stack-row">
+            <span class="osi-num">6</span>
+            <span class="osi-label">Presentation</span>
+            <span class="osi-desc">Encoding, encryption</span>
+          </div>
+          <div class="osi-stack-row">
+            <span class="osi-num">5</span>
+            <span class="osi-label">Session</span>
+            <span class="osi-desc">Dialog control, sync</span>
+          </div>
+          <div class="osi-stack-row">
+            <span class="osi-num">4</span>
+            <span class="osi-label">Transport</span>
+            <span class="osi-desc">End-to-end delivery, TCP</span>
+          </div>
+          <div class="osi-stack-row">
+            <span class="osi-num">3</span>
+            <span class="osi-label">Network</span>
+            <span class="osi-desc">Routing, IP addressing</span>
+          </div>
+          <div class="osi-stack-row">
+            <span class="osi-num">2</span>
+            <span class="osi-label">Data Link</span>
+            <span class="osi-desc">Frames, MAC addresses</span>
+          </div>
+          <div class="osi-stack-row">
+            <span class="osi-num">1</span>
+            <span class="osi-label">Physical</span>
+            <span class="osi-desc">Bits, cables, signals</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 3 — LAYER 7: APPLICATION
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-l7">
+      <div class="section-header">
+        <span class="section-badge">LAYER 7</span>
+        <h2>Application Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Application</span>
+      </div>
+      <div class="explanation-card">
+        🖥️ <strong>What it does:</strong> Enables users (human or software) to <em>access the network</em>. Provides user interfaces and support for services like email, file transfer, and the web.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li>This is the layer the <strong>user directly interacts with</strong> — web browsers, email clients, FTP programs.</li>
+          <li>Provides network services directly to <em>end-user applications</em>.</li>
+          <li>Responsible for identifying the communication partner and checking resource availability.</li>
+        </ul>
+        <div class="proto-chips" style="margin-top:16px">
+          <span class="chip chip-blue">HTTP</span>
+          <span class="chip chip-blue">HTTPS</span>
+          <span class="chip chip-green">FTP</span>
+          <span class="chip chip-green">SMTP</span>
+          <span class="chip chip-yellow">DNS</span>
+          <span class="chip chip-yellow">TELNET</span>
+          <span class="chip chip-purple">SSH</span>
+          <span class="chip chip-purple">SNMP</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 4 — LAYER 6: PRESENTATION
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-l6">
+      <div class="section-header">
+        <span class="section-badge">LAYER 6</span>
+        <h2>Presentation Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Application</span>
+      </div>
+      <div class="explanation-card">
+        🔤 <strong>What it does:</strong> Concerned with the <em>syntax and semantics</em> of information exchanged between two systems. Converts data into a format the application layer can accept.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li><strong>Translation:</strong> Converts between different character encoding systems (e.g., ASCII ↔ EBCDIC).</li>
+          <li><strong>Compression:</strong> Reduces the number of bits to be transmitted, improving bandwidth efficiency.</li>
+          <li><strong>Encryption:</strong> Transforms data to ensure privacy during transmission; decryption on the other end.</li>
+        </ul>
+        <div class="resp-grid">
+          <div class="resp-item">Character encoding</div>
+          <div class="resp-item">Data compression</div>
+          <div class="resp-item">Encryption/Decryption</div>
+          <div class="resp-item">Format conversion</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 5 — LAYER 5: SESSION
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-l5">
+      <div class="section-header">
+        <span class="section-badge">LAYER 5</span>
+        <h2>Session Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Application</span>
+      </div>
+      <div class="explanation-card">
+        🤝 <strong>What it does:</strong> The <em>network dialog controller</em>. Establishes, maintains, and synchronizes the interaction between communicating systems.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li>A <strong>network session</strong> is a temporary interactive information interchange between two or more communicating devices.</li>
+          <li><em>Authentication &amp; Authorization</em> — verifies who is talking and what they're allowed to do.</li>
+          <li><strong>Dialog control</strong> — determines which side transmits at any given time (half-duplex or full-duplex).</li>
+          <li><em>Synchronization</em> — inserts checkpoints into data streams so that if a failure occurs, only the data after the last checkpoint needs to be retransmitted.</li>
+        </ul>
+        <div class="resp-grid">
+          <div class="resp-item">Authentication</div>
+          <div class="resp-item">Authorization</div>
+          <div class="resp-item">Dialog control</div>
+          <div class="resp-item">Synchronization</div>
+          <div class="resp-item">Session establishment</div>
+          <div class="resp-item">Session termination</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 6 — LAYER 4: TRANSPORT
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-l4">
+      <div class="section-header">
+        <span class="section-badge">LAYER 4</span>
+        <h2>Transport Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Transport</span>
+      </div>
+      <div class="explanation-card">
+        🔀 <strong>What it does:</strong> Responsible for <em>process-to-process delivery</em> of the entire message. The Network layer handles individual packets — the Transport layer handles the complete message.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li><strong>Service-point addressing:</strong> Uses port numbers to direct data to the correct process on a machine.</li>
+          <li><em>Segmentation and reassembly:</em> Divides the message into segments (each with a sequence number) and reassembles them at the destination.</li>
+          <li><strong>Connection control:</strong> Can be connection-oriented (TCP — reliable, ordered) or connectionless (UDP — fast, unreliable).</li>
+          <li><em>End-to-end flow control:</em> Prevents the sender from overwhelming the receiver.</li>
+          <li><strong>Error control:</strong> Ensures the entire message arrives, requesting retransmission of corrupted or lost segments.</li>
+        </ul>
+        <div class="proto-chips" style="margin-top:14px">
+          <span class="chip chip-blue">TCP — Connection-oriented</span>
+          <span class="chip chip-green">UDP — Connectionless</span>
+          <span class="chip chip-purple">SCTP — Multimedia streams</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 7 — LAYER 3: NETWORK
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-l3">
+      <div class="section-header">
+        <span class="section-badge">LAYER 3</span>
+        <h2>Network Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Internet (Network)</span>
+      </div>
+      <div class="explanation-card">
+        🌐 <strong>What it does:</strong> Responsible for <em>source-to-destination delivery</em> of a packet across multiple networks. The Data Link layer handles frames on a single link; the Network layer routes across many links.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li><strong>Logical addressing:</strong> Adds source and destination <em>IP addresses</em> to each packet so it can traverse multiple networks.</li>
+          <li><em>Routing:</em> Determines the best path for packets to travel from source to destination through intermediate routers.</li>
+          <li><strong>IP (Internet Protocol):</strong> Connectionless — defines the datagram format and how packets are routed. Best-effort delivery (no guarantee).</li>
+        </ul>
+        <div class="proto-chips" style="margin-top:14px">
+          <span class="chip chip-blue">IP — Internet Protocol</span>
+          <span class="chip chip-red">ICMP — Error reporting</span>
+          <span class="chip chip-green">ARP — Address resolution</span>
+          <span class="chip chip-yellow">DHCP — Dynamic addressing</span>
+          <span class="chip chip-purple">IGMP — Multicasting</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 8 — LAYER 2: DATA LINK
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-l2">
+      <div class="section-header">
+        <span class="section-badge">LAYER 2</span>
+        <h2>Data Link Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Network Access</span>
+      </div>
+      <div class="explanation-card">
+        🔗 <strong>What it does:</strong> Responsible for moving <em>frames</em> from one hop (node) to the next. Transforms the raw physical layer into a reliable link. Makes the physical layer appear error-free to upper layers.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li><strong>Framing:</strong> Divides the bitstream into manageable data units (frames) with a defined start/end boundary.</li>
+          <li><em>Physical addressing:</em> Adds the sender's and receiver's MAC address to each frame for local delivery.</li>
+          <li><strong>Hop-to-hop delivery:</strong> Gets a frame from one node (computer or router) to the adjacent node on the same network.</li>
+          <li><em>Flow control:</em> Prevents a fast sender from flooding a slow receiver on the same link.</li>
+          <li><strong>Error control:</strong> Detects and retransmits damaged or lost frames (e.g., using CRC checksums).</li>
+          <li><em>Access control:</em> Determines which device has control of the shared transmission medium at any given time.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 9 — LAYER 1: PHYSICAL
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-l1">
+      <div class="section-header">
+        <span class="section-badge">LAYER 1</span>
+        <h2>Physical Layer</h2>
+        <span class="layer-tag tcp-tag">TCP/IP: Network Access</span>
+      </div>
+      <div class="explanation-card">
+        ⚡ <strong>What it does:</strong> Responsible for movement of <em>individual bits</em> from one hop to the next. Deals with the mechanical and electrical specifications of the transmission medium.
+      </div>
+      <div class="content-card">
+        <ul class="term-list">
+          <li><strong>Data rate:</strong> Defines how many bits per second can be transmitted.</li>
+          <li><em>Bit synchronization:</em> Ensures sender and receiver agree on the bit duration (clock synchronization).</li>
+          <li><strong>Line configuration:</strong> Point-to-point or multipoint connections.</li>
+          <li><em>Physical topology:</em> The layout of the network — mesh, star, ring, bus.</li>
+          <li><strong>Transmission mode:</strong> Simplex, half-duplex, or full-duplex communication.</li>
+        </ul>
+        <div class="resp-grid">
+          <div class="resp-item">Electrical signals</div>
+          <div class="resp-item">Light pulses (fiber)</div>
+          <div class="resp-item">Radio waves (wireless)</div>
+          <div class="resp-item">Clock synchronization</div>
+          <div class="resp-item">Physical topology</div>
+          <div class="resp-item">Transmission mode</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 10 — TCP/IP SUITE OVERVIEW
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-tcpip">
+      <div class="section-header">
+        <span class="section-badge">TCP/IP</span>
+        <h2>TCP/IP Protocol Suite</h2>
+      </div>
+      <div class="explanation-card">
+        🌍 <strong>TCP/IP</strong> = Transmission Control Protocol / Internet Protocol. The <em>protocol suite actually used on the Internet</em> today. Originally defined as 4 layers — today conceptually described as 5 layers.
+      </div>
+      <div class="content-card" style="margin-bottom:20px">
+        <ul class="term-list">
+          <li>A <strong>protocol suite</strong> is a set of protocols that work together, each handling a specific layer of communication.</li>
+          <li>TCP/IP was designed to be <em>robust</em> — the network can survive partial damage and still route packets.</li>
+          <li>Unlike OSI, TCP/IP is a <strong>real implementation</strong> — OSI is a theoretical model.</li>
+        </ul>
+      </div>
+
+      <!-- OSI vs TCP/IP comparison -->
+      <div class="content-card">
+        <div style="font-family:var(--font-head);font-size:0.65rem;letter-spacing:0.15em;color:var(--accent-blue);margin-bottom:18px;">OSI ↔ TCP/IP LAYER MAPPING</div>
+        <div class="compare-wrap">
+          <div class="compare-col">
+            <div class="compare-title blue">OSI MODEL (7)</div>
+            <div class="compare-layer cl-blue">7 — Application</div>
+            <div class="compare-layer cl-blue">6 — Presentation</div>
+            <div class="compare-layer cl-blue">5 — Session</div>
+            <div class="compare-layer cl-blue">4 — Transport</div>
+            <div class="compare-layer cl-blue">3 — Network</div>
+            <div class="compare-layer cl-blue">2 — Data Link</div>
+            <div class="compare-layer cl-blue">1 — Physical</div>
+          </div>
+          <div class="compare-lines">
+            <span class="cline">↔ ↔ ↔</span>
+            <span class="cline">↔</span>
+            <span class="cline">↔</span>
+            <span class="cline">↔ ↔</span>
+          </div>
+          <div class="compare-col">
+            <div class="compare-title green">TCP/IP MODEL (5)</div>
+            <div class="compare-layer cl-green" style="min-height:calc(3*36px + 2*5px);display:flex;align-items:center;justify-content:center;">Application</div>
+            <div class="compare-layer cl-green">Transport</div>
+            <div class="compare-layer cl-green">Internet / Network</div>
+            <div class="compare-layer cl-green" style="min-height:calc(2*36px + 1*5px);display:flex;align-items:center;justify-content:center;">Network Access</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 11 — TCP/IP EACH LAYER
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-tcplayers">
+      <div class="section-header">
+        <span class="section-badge">TCP/IP LAYERS</span>
+        <h2>TCP/IP — Layer by Layer</h2>
+      </div>
+      <div class="explanation-card">
+        📋 <strong>Each TCP/IP layer</strong> has specific protocols and responsibilities. Unlike OSI's rigid separation, TCP/IP layers are more flexible and overlap in practice.
+      </div>
+      <div class="layer-cards">
+
+        <div class="lcard">
+          <div class="lcard-num" style="color:var(--accent-green)">5</div>
+          <div class="lcard-body">
+            <div class="lcard-title" style="color:var(--accent-green)">APPLICATION LAYER</div>
+            <div class="lcard-text">Process-to-process communication. Defines how applications access network services.</div>
+            <div class="proto-chips" style="margin-top:10px">
+              <span class="chip chip-green">HTTP — Web</span>
+              <span class="chip chip-green">SMTP — Email</span>
+              <span class="chip chip-green">FTP — File Transfer</span>
+              <span class="chip chip-green">DNS — Domain Names</span>
+              <span class="chip chip-green">SSH</span>
+              <span class="chip chip-green">TELNET</span>
+              <span class="chip chip-green">SNMP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lcard">
+          <div class="lcard-num" style="color:var(--accent-yellow)">4</div>
+          <div class="lcard-body">
+            <div class="lcard-title" style="color:var(--accent-yellow)">TRANSPORT LAYER</div>
+            <div class="lcard-text">
+              <strong style="color:var(--accent-blue)">TCP</strong> — Connection-oriented. Provides flow control, error control, and congestion control. Guaranteed delivery.<br/>
+              <strong style="color:var(--accent-green)">UDP</strong> — Connectionless. Small overhead, no guarantee. Best for real-time apps (video, gaming).<br/>
+              <strong style="color:#b058d8">SCTP</strong> — Designed for multimedia applications (e.g., VoIP).
+            </div>
+          </div>
+        </div>
+
+        <div class="lcard">
+          <div class="lcard-num" style="color:var(--accent-blue)">3</div>
+          <div class="lcard-body">
+            <div class="lcard-title" style="color:var(--accent-blue)">NETWORK (INTERNET) LAYER</div>
+            <div class="lcard-text">Host-to-host communication across multiple networks. Defines the datagram format and routes packets across the internet.</div>
+            <div class="proto-chips" style="margin-top:10px">
+              <span class="chip chip-blue">IP — Core routing</span>
+              <span class="chip chip-red">ICMP — Error messages</span>
+              <span class="chip chip-blue">ARP — MAC resolution</span>
+              <span class="chip chip-yellow">DHCP — Auto addressing</span>
+              <span class="chip chip-purple">IGMP — Multicast groups</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lcard">
+          <div class="lcard-num" style="color:var(--accent-blue)">2</div>
+          <div class="lcard-body">
+            <div class="lcard-title" style="color:var(--accent-blue)">DATA LINK LAYER</div>
+            <div class="lcard-text">Moves data across a <em style="color:var(--accent-yellow)">single link</em>. Encapsulates datagrams into frames. Provides error detection and correction on individual hops.</div>
+          </div>
+        </div>
+
+        <div class="lcard">
+          <div class="lcard-num" style="color:var(--accent-red)">1</div>
+          <div class="lcard-body">
+            <div class="lcard-title" style="color:var(--accent-red)">PHYSICAL LAYER</div>
+            <div class="lcard-text">Carries individual bits across the physical link. Transforms bits into signals appropriate for the transmission medium — electrical, optical, or radio.</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ══════════════════════════════════════════
+         SECTION 12 — ADDRESSING IN TCP/IP
+    ══════════════════════════════════════════ -->
+    <section class="learn-section" id="s-addr">
+      <div class="section-header">
+        <span class="section-badge">ADDRESSING</span>
+        <h2>Addressing in TCP/IP</h2>
+      </div>
+      <div class="explanation-card">
+        📍 TCP/IP uses <em>three types of addresses</em> — one per layer level — to uniquely identify machines, processes, and physical hardware at different scopes.
+      </div>
+      <div class="addr-cards">
+
+        <div class="addr-card">
+          <div class="addr-icon">🔌</div>
+          <div class="addr-title">PHYSICAL ADDRESS (MAC)</div>
+          <div class="addr-text">
+            Also called the <em>link address</em>. Defined by the LAN or WAN technology in use. Identifies a specific network interface card (NIC) on the local network.
+            Changes as a frame hops from router to router.
+          </div>
+          <div class="addr-example">Example: 48-bit Ethernet MAC → AA:BB:CC:DD:EE:FF</div>
+        </div>
+
+        <div class="addr-card">
+          <div class="addr-icon">🌐</div>
+          <div class="addr-title">LOGICAL ADDRESS (IP)</div>
+          <div class="addr-text">
+            Necessary for <em>universal communication</em> that must cross multiple networks. A 32-bit (IPv4) address uniquely identifies a host globally. Also called the IP address.
+          </div>
+          <div class="addr-example">Example: 32-bit IPv4 → 192.168.1.100</div>
+        </div>
+
+        <div class="addr-card">
+          <div class="addr-icon">🔢</div>
+          <div class="addr-title">PORT ADDRESS</div>
+          <div class="addr-text">
+            Used for <em>process-to-process</em> communication. A 16-bit number in TCP/IP that identifies which application or service should receive the data.
+            Allows multiple processes to share a single IP at the same time.
+          </div>
+          <div class="addr-example">TELNET: port 23 | FTP: port 21 | HTTP: port 80</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- BOTTOM NAV -->
+    <div style="text-align:center;margin-top:60px;padding-top:30px;border-top:1px solid var(--border)">
+      <a href="index.html" class="btn btn-primary" style="display:inline-flex;text-decoration:none;">
+        <span class="btn-icon">⚡</span> Try the Live Simulator
+      </a>
+    </div>
+
+  </main>
+
+  <!-- ═══ SCROLLSPY SCRIPT ═══ -->
+  <script>
+    /* ── Scroll-spy: highlight active sidebar item ── */
+    (function () {
+      const sections = document.querySelectorAll('.learn-section');
+      const navItems = document.querySelectorAll('.snav-item');
+
+      let ticking = false;
+
+      const update = () => {
+        let current = null;
+        sections.forEach(sec => {
+          const top = sec.getBoundingClientRect().top;
+          if (top <= 110) current = sec.id;
+        });
+
+        navItems.forEach(item => {
+          item.classList.remove('active');
+          const href = item.getAttribute('href').replace('#', '');
+          if (href === current) item.classList.add('active');
+        });
+
+        ticking = false;
+      };
+
+      window.addEventListener('scroll', () => {
+        if (!ticking) { requestAnimationFrame(update); ticking = true; }
+      }, { passive: true });
+
+      // Initialize
+      update();
+    })();
+  </script>
+
+  <!-- Hidden video reload button — appears on triple-click of navbar logo -->
+  <button
+    id="video-reload-btn"
+    onclick="(function(){
+      var v = document.getElementById('bg-video');
+      if(v){ v.load(); v.play().catch(()=>{}); }
+    })()"
+    style="
+      position: fixed;
+      bottom: 8px;
+      right: 8px;
+      background: transparent;
+      border: none;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      opacity: 0;
+      z-index: 9999;
+    "
+    title="Reload background video"
+    aria-hidden="true"
+  ></button>
+
+  <script>
+// ═══════════════════════════════════════════════
+//  BULLETPROOF VIDEO BACKGROUND MANAGER
+// ═══════════════════════════════════════════════
+(function() {
+  'use strict';
+
+  const VIDEO_ID      = 'bg-video';
+  const FADE_DURATION = 1500;  // ms for opacity transition
+  const RETRY_DELAY   = 2000;  // ms between retries
+  const MAX_RETRIES   = 5;
+
+  let retryCount    = 0;
+  let isPlaying     = false;
+  let visibilityTimer = null;
+
+  function getVideo() {
+    return document.getElementById(VIDEO_ID);
+  }
+
+  // ── Show video with smooth fade-in ──────────────────────────────
+  function fadeInVideo(video) {
+    video.style.opacity = '1';
+    isPlaying = true;
+  }
+
+  // ── Hide video (fallback CSS shows through) ──────────────────────
+  function fadeOutVideo(video) {
+    video.style.opacity = '0';
+    isPlaying = false;
+  }
+
+  // ── Attempt to play video ────────────────────────────────────────
+  function attemptPlay(video) {
+    if (!video) return;
+
+    // Ensure muted (browsers require this)
+    video.muted  = true;
+    video.volume = 0;
+
+    const playPromise = video.play();
+
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          // Success — fade in
+          fadeInVideo(video);
+          retryCount = 0;
+        })
+        .catch((err) => {
+          // Autoplay blocked — try with user interaction workaround
+          console.warn('[BgVideo] Autoplay blocked:', err.message);
+          handleAutoplayBlocked(video);
+        });
+    } else {
+      // Old browser — just try to fade in
+      fadeInVideo(video);
+    }
+  }
+
+  // ── Handle autoplay block ────────────────────────────────────────
+  function handleAutoplayBlocked(video) {
+    // Strategy 1: Retry after short delay (works after user interacts)
+    if (retryCount < MAX_RETRIES) {
+      retryCount++;
+      setTimeout(() => attemptPlay(video), RETRY_DELAY);
+    }
+
+    // Strategy 2: Play on first user interaction anywhere on page
+    const interactionEvents = ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'];
+    
+    function onUserInteraction() {
+      attemptPlay(video);
+      // Remove all listeners after first interaction
+      interactionEvents.forEach(evt =>
+        document.removeEventListener(evt, onUserInteraction)
+      );
+    }
+
+    interactionEvents.forEach(evt =>
+      document.addEventListener(evt, onUserInteraction, { once: true, passive: true })
+    );
+  }
+
+  // ── Handle video errors ──────────────────────────────────────────
+  function handleVideoError(video) {
+    console.warn('[BgVideo] Video error — using CSS fallback');
+    fadeOutVideo(video);
+    // CSS fallback (#video-fallback-bg) automatically shows through
+  }
+
+  // ── Handle tab visibility changes ────────────────────────────────
+  function handleVisibilityChange() {
+    const video = getVideo();
+    if (!video) return;
+
+    if (document.hidden) {
+      // Tab hidden — pause to save resources
+      video.pause();
+    } else {
+      // Tab visible again — resume
+      clearTimeout(visibilityTimer);
+      visibilityTimer = setTimeout(() => {
+        if (video.paused) {
+          attemptPlay(video);
+        }
+      }, 300);
+    }
+  }
+
+  // ── Handle video stalling/freezing ──────────────────────────────
+  function handleVideoStall(video) {
+    console.warn('[BgVideo] Video stalled — attempting recovery');
+    const currentTime = video.currentTime;
+    video.load();
+    video.currentTime = currentTime;
+    attemptPlay(video);
+  }
+
+  // ── Main initialization ──────────────────────────────────────────
+  function initVideoBackground() {
+    const video = getVideo();
+    if (!video) {
+      console.warn('[BgVideo] Video element not found');
+      return;
+    }
+
+    // Event: Video ready to play
+    video.addEventListener('canplay', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video can play through without buffering
+    video.addEventListener('canplaythrough', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video loaded enough to start
+    video.addEventListener('loadeddata', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video ended (shouldn't happen with loop, but just in case)
+    video.addEventListener('ended', () => {
+      video.currentTime = 0;
+      attemptPlay(video);
+    });
+
+    // Event: Video error
+    video.addEventListener('error', () => handleVideoError(video));
+
+    // Event: Video stalled
+    video.addEventListener('stalled', () => handleVideoStall(video));
+
+    // Event: Video waiting/buffering
+    video.addEventListener('waiting', () => {
+      // Briefly allow CSS fallback to show if buffering takes too long
+      setTimeout(() => {
+        if (video.readyState < 3 && !isPlaying) {
+          // Still buffering after 3s — show CSS fallback
+          fadeOutVideo(video);
+        }
+      }, 3000);
+    });
+
+    // Tab visibility handling
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Window focus handling (extra safety)
+    window.addEventListener('focus', () => {
+      const v = getVideo();
+      if (v && v.paused) {
+        setTimeout(() => attemptPlay(v), 200);
+      }
+    });
+
+    // Initial play attempt
+    attemptPlay(video);
+
+    // Fallback: Try again after 1s, 3s, 6s regardless
+    [1000, 3000, 6000].forEach(delay => {
+      setTimeout(() => {
+        const v = getVideo();
+        if (v && v.paused && !document.hidden) {
+          attemptPlay(v);
+        }
+      }, delay);
+    });
+  }
+
+  // ── Start when DOM is ready ──────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVideoBackground);
+  } else {
+    initVideoBackground();
+  }
+
+})();
+  </script>
+
+  <script>
+    // ── Active navigation state ──
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === currentPage) {
+        link.classList.add('active');
+        link.style.color = '#00d4ff';
+        link.style.textShadow = '0 0 10px rgba(0, 212, 255, 0.5)';
+      }
+    });
+
+    // ── Ensure video keeps playing ──
+    function ensureVideoPlaying() {
+      const video = document.querySelector('#bg-video');
+      if (video) {
+        if (video.paused) {
+          video.play().catch(e => console.log('Video play error:', e));
+        }
+        if (video.ended) {
+          video.currentTime = 0;
+          video.play();
+        }
+        video.style.display = 'block';
+        video.style.visibility = 'visible';
+        video.style.opacity = '1';
+      }
+    }
+    setInterval(ensureVideoPlaying, 100);
+    document.addEventListener('scroll', ensureVideoPlaying);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) ensureVideoPlaying();
+    });
+  </script>
+</body>
+</html>

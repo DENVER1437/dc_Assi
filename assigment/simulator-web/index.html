@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>html,body{background:#0b1326!important;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Packet Simulator | Home</title>
+  <meta name="description" content="Data Communication Assignment — Nirma University. Network Packet Transmission Simulator visualizing OSI & TCP/IP layers." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── HOME-PAGE SPECIFIC OVERRIDES ─────────────────────── */
+
+    /* Remove main padding-left that was for the side tracker */
+    body { overflow-x: hidden; }
+    #home-main { position: relative; z-index: 1; }
+
+    /* ── TOP NAV ────────────────────────────────────────────── */
+    #topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 58px;
+      background: rgba(8,12,16,0.88);
+      border-bottom: 1px solid rgba(0,212,255,0.18);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 500;
+    }
+
+    .nav-brand {
+      font-family: var(--font-head);
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      color: var(--accent-blue);
+      text-decoration: none;
+      text-shadow: var(--glow-blue);
+      white-space: nowrap;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.25s, text-shadow 0.25s;
+      padding: 4px 0;
+      border-bottom: 1px solid transparent;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--accent-blue);
+      text-shadow: var(--glow-blue);
+      border-bottom-color: var(--accent-blue);
+    }
+
+    /* ── NETWORK CANVAS BACKGROUND ─────────────────────────── */
+    #net-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── HOME LAYOUT ─────────────────────────────────────────── */
+    #home-main {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px 48px;
+      text-align: center;
+      gap: 0;
+    }
+
+    /* ── UNIVERSITY LOGO BLOCK ───────────────────────────────── */
+    .uni-block {
+      margin-bottom: 32px;
+      animation: fadeDown 0.7s ease both;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .nu-badge {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px 25px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      margin: 0 auto;
+      width: fit-content;
+    }
+
+    .nu-logo-styled {
+      filter: drop-shadow(0 0 10px rgba(220, 20, 60, 0.5));
+      transition: transform 0.3s ease;
+    }
+
+    .nu-logo-styled:hover {
+      transform: scale(1.05);
+    }
+
+    .nu-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* ── HERO HEADING ────────────────────────────────────────── */
+    .home-heading {
+      font-family: var(--font-head);
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      font-weight: 900;
+      line-height: 1.15;
+      color: #fff;
+      margin-bottom: 16px;
+      animation: fadeDown 0.8s 0.1s ease both;
+    }
+
+    .home-heading .gradient-text {
+      background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-green) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .home-subtitle {
+      font-family: var(--font-mono);
+      font-size: clamp(0.75rem, 1.5vw, 0.92rem);
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      margin-bottom: 44px;
+      max-width: 600px;
+      animation: fadeDown 0.8s 0.2s ease both;
+    }
+
+    /* ── ASSIGNMENT CARD ─────────────────────────────────────── */
+    .assignment-card {
+      background: rgba(13,18,25,0.75);
+      border: 1px solid rgba(0,212,255,0.22);
+      border-radius: 14px;
+      padding: 36px 44px;
+      max-width: 520px;
+      width: 100%;
+      backdrop-filter: blur(18px);
+      box-shadow:
+        0 0 0 1px rgba(0,212,255,0.06),
+        0 8px 40px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(0,212,255,0.08);
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      animation: cardRise 0.8s 0.3s cubic-bezier(0.34,1.2,0.64,1) both;
+      margin-bottom: 40px;
+    }
+
+    @keyframes cardRise {
+      from { opacity: 0; transform: translateY(30px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Subtle top shimmer line */
+    .assignment-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--accent-blue) 50%, transparent 100%);
+      opacity: 0.7;
+    }
+
+    /* Corner accent */
+    .assignment-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 60px; height: 60px;
+      background: radial-gradient(circle at top right, rgba(0,212,255,0.08) 0%, transparent 70%);
+    }
+
+    .card-title {
+      font-family: var(--font-head);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      color: var(--accent-blue);
+      text-shadow: var(--glow-blue);
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0,212,255,0.3), transparent);
+    }
+
+    .card-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 20px;
+    }
+
+    .card-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .card-value {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: #e8f0fa;
+      letter-spacing: 0.04em;
+    }
+
+    .card-divider {
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0,212,255,0.15), transparent);
+      margin: 16px 0;
+    }
+
+    /* Created By / Members */
+    .members-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .roll-badge {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      color: var(--accent-green);
+      background: rgba(57,255,20,0.08);
+      border: 1px solid rgba(57,255,20,0.35);
+      border-radius: 5px;
+      padding: 3px 8px;
+      white-space: nowrap;
+      text-shadow: var(--glow-green);
+    }
+
+    .member-name {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: #e8f0fa;
+    }
+
+    /* Guided By */
+    .guide-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .guide-name {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--accent-yellow);
+      text-shadow: 0 0 8px rgba(255,204,0,0.4);
+    }
+
+    /* ── START BUTTON ────────────────────────────────────────── */
+    .start-btn {
+      font-family: var(--font-head);
+      font-size: 0.85rem;
+      letter-spacing: 0.2em;
+      padding: 16px 52px;
+      border-radius: 8px;
+      border: 1px solid rgba(57,255,20,0.55);
+      background: rgba(57,255,20,0.07);
+      color: var(--accent-green);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 0 14px rgba(57,255,20,0.15), inset 0 0 14px rgba(57,255,20,0.03);
+      animation: fadeDown 0.8s 0.5s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .start-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(57,255,20,0.1) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .start-btn:hover {
+      border-color: var(--accent-green);
+      box-shadow: var(--glow-green), 0 0 40px rgba(57,255,20,0.2);
+      transform: translateY(-3px);
+      color: var(--accent-green);
+    }
+
+    .start-btn:hover::before { opacity: 1; }
+
+    .start-arrow {
+      font-size: 1.1rem;
+      transition: transform 0.3s;
+    }
+    .start-btn:hover .start-arrow { transform: translateX(4px); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      #topnav { padding: 0 16px; }
+      .nav-brand { font-size: 0.7rem; letter-spacing: 0.06em; }
+      .nav-links { gap: 14px; }
+      .assignment-card { padding: 24px 20px; }
+      .home-heading { font-size: 1.8rem; }
+      .start-btn { padding: 14px 32px; font-size: 0.75rem; }
+      .member-row { flex-wrap: wrap; }
+    }
+  </style>
+
+  <!-- Preload video for instant playback -->
+  <link rel="preload" href="background-video.mp4" as="video" type="video/mp4"/>
+
+  <!-- Prevent video from affecting page layout -->
+  <style>
+    #bg-video {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      min-width: 100vw !important;
+      min-height: 100vh !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: cover !important;
+      z-index: -1 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      /* CRITICAL: Prevent video from stopping rendering */
+      animation: videoLoop 1s infinite;
+    }
+
+    @keyframes videoLoop {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.99; } /* Forces continuous rendering */
+    }
+
+    /* Ensure video container never gets hidden */
+    #video-bg-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      overflow: hidden;
+      background: #0b1326;
+    }
+
+    /* Smooth page transition */
+    body {
+      overflow-x: hidden;
+      opacity: 0;
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+  </style>
+  <!-- Force video autoplay — runs before DOM is fully loaded -->
+  <script>
+  window.addEventListener('load', function() {
+    var videos = document.querySelectorAll('video');
+    videos.forEach(function(v) {
+      v.muted = true;
+      v.volume = 0;
+      v.play().catch(function() {
+        // If blocked, play on first click anywhere
+        document.addEventListener('click', function tryPlay() {
+          v.play().catch(function(){});
+          document.removeEventListener('click', tryPlay);
+        }, { once: true });
+      });
+    });
+  });
+
+  // Resume video after tab switch
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      var videos = document.querySelectorAll('video');
+      videos.forEach(function(v) {
+        if (v.paused) v.play().catch(function(){});
+      });
+    }
+  });
+  </script>
+</head>
+<body>
+
+  <!-- Background video container (Step 2/6) -->
+  <div id="video-bg-container">
+    <video
+      id="bg-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      disablePictureInPicture
+      disableRemotePlayback
+      x-webkit-airplay="deny"
+    >
+      <source src="background-video.mp4" type="video/mp4"/>
+      <source src="./background-video.mp4" type="video/mp4"/>
+    </video>
+    <div class="video-dark-overlay"></div>
+  </div>
+
+  <div class="video-overlay" style="position: fixed; z-index: -1; pointer-events: none;"></div>
+
+  <!-- ═══════ TOP NAVIGATION ═══════ -->
+  <header id="topnav">
+    <a href="index.html" class="nav-brand">Network Packet Simulator</a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="simulator.html">Simulator</a></li>
+        <li><a href="learn.html">Learn Layers</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ═══════ HOME MAIN CONTENT ═══════ -->
+  <main id="home-main">
+
+    <!-- University Logo -->
+    <div class="uni-block">
+      <div class="nu-badge" style="justify-content: center;">
+        <img src="nirma-logo.png" alt="Nirma University - Institute of Technology" style="
+          max-height: 100px;
+          width: auto;
+          border-radius: 8px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+          object-fit: contain;
+        " />
+      </div>
+    </div>
+
+    <!-- Main Heading -->
+    <h1 class="home-heading">
+      Network Packet<br />
+      <span class="gradient-text">Transmission Simulator</span>
+    </h1>
+
+    <p class="home-subtitle">
+      Visualizing Data Communication through OSI &amp; TCP/IP Layers
+    </p>
+
+    <!-- Assignment Info Card -->
+    <div class="assignment-card">
+
+      <div class="card-title">[ DATA COMMUNICATION ASSIGNMENT ]</div>
+
+      <div class="card-row">
+        <span class="card-label">Course Code</span>
+        <span class="card-value">2CS202CC23</span>
+      </div>
+
+      <div class="card-divider"></div>
+
+      <div class="card-row">
+        <span class="card-label">Created By</span>
+        <div class="members-list">
+          <div class="member-row">
+            <span class="roll-badge">24BCE380</span>
+            <span class="member-name">Meet Kotecha</span>
+          </div>
+          <div class="member-row">
+            <span class="roll-badge">24BCE374</span>
+            <span class="member-name">Rathod Dhruvraj</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-divider"></div>
+
+      <div class="card-row">
+        <span class="card-label">Guided By</span>
+        <div class="guide-row">
+          <span class="guide-name">Dr. Umesh Bodkhe</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Start Simulation Button -->
+    <a href="simulator.html" class="start-btn" id="start-sim-btn">
+      <span>START SIMULATION</span>
+      <span class="start-arrow">→</span>
+    </a>
+
+  </main>
+
+  <script>
+    // ── Active navigation state ──
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === currentPage) {
+        link.classList.add('active');
+        link.style.color = '#00d4ff';
+        link.style.textShadow = '0 0 10px rgba(0, 212, 255, 0.5)';
+      }
+    });
+
+    // ── Ensure video keeps playing ──
+    function ensureVideoPlaying() {
+      const video = document.querySelector('#bg-video');
+      if (video) {
+        if (video.paused) {
+          video.play().catch(e => console.log('Video play error:', e));
+        }
+        if (video.ended) {
+          video.currentTime = 0;
+          video.play();
+        }
+        video.style.display = 'block';
+        video.style.visibility = 'visible';
+        video.style.opacity = '1';
+      }
+    }
+    setInterval(ensureVideoPlaying, 100);
+    document.addEventListener('scroll', ensureVideoPlaying);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) ensureVideoPlaying();
+    });
+  </script>
+
+  <!-- Hidden video reload button — appears on triple-click of navbar logo -->
+  <button
+    id="video-reload-btn"
+    onclick="(function(){
+      var v = document.getElementById('bg-video');
+      if(v){ v.load(); v.play().catch(()=>{}); }
+    })()"
+    style="
+      position: fixed;
+      bottom: 8px;
+      right: 8px;
+      background: transparent;
+      border: none;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      opacity: 0;
+      z-index: 9999;
+    "
+    title="Reload background video"
+    aria-hidden="true"
+  ></button>
+
+  <script>
+// ═══════════════════════════════════════════════
+//  BULLETPROOF VIDEO BACKGROUND MANAGER
+// ═══════════════════════════════════════════════
+(function() {
+  'use strict';
+
+  const VIDEO_ID      = 'bg-video';
+  const FADE_DURATION = 1500;  // ms for opacity transition
+  const RETRY_DELAY   = 2000;  // ms between retries
+  const MAX_RETRIES   = 5;
+
+  let retryCount    = 0;
+  let isPlaying     = false;
+  let visibilityTimer = null;
+
+  function getVideo() {
+    return document.getElementById(VIDEO_ID);
+  }
+
+  // ── Show video with smooth fade-in ──────────────────────────────
+  function fadeInVideo(video) {
+    video.style.opacity = '1';
+    isPlaying = true;
+  }
+
+  // ── Hide video (fallback CSS shows through) ──────────────────────
+  function fadeOutVideo(video) {
+    video.style.opacity = '0';
+    isPlaying = false;
+  }
+
+  // ── Attempt to play video ────────────────────────────────────────
+  function attemptPlay(video) {
+    if (!video) return;
+
+    // Ensure muted (browsers require this)
+    video.muted  = true;
+    video.volume = 0;
+
+    const playPromise = video.play();
+
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          // Success — fade in
+          fadeInVideo(video);
+          retryCount = 0;
+        })
+        .catch((err) => {
+          // Autoplay blocked — try with user interaction workaround
+          console.warn('[BgVideo] Autoplay blocked:', err.message);
+          handleAutoplayBlocked(video);
+        });
+    } else {
+      // Old browser — just try to fade in
+      fadeInVideo(video);
+    }
+  }
+
+  // ── Handle autoplay block ────────────────────────────────────────
+  function handleAutoplayBlocked(video) {
+    // Strategy 1: Retry after short delay (works after user interacts)
+    if (retryCount < MAX_RETRIES) {
+      retryCount++;
+      setTimeout(() => attemptPlay(video), RETRY_DELAY);
+    }
+
+    // Strategy 2: Play on first user interaction anywhere on page
+    const interactionEvents = ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'];
+    
+    function onUserInteraction() {
+      attemptPlay(video);
+      // Remove all listeners after first interaction
+      interactionEvents.forEach(evt =>
+        document.removeEventListener(evt, onUserInteraction)
+      );
+    }
+
+    interactionEvents.forEach(evt =>
+      document.addEventListener(evt, onUserInteraction, { once: true, passive: true })
+    );
+  }
+
+  // ── Handle video errors ──────────────────────────────────────────
+  function handleVideoError(video) {
+    console.warn('[BgVideo] Video error — using CSS fallback');
+    fadeOutVideo(video);
+    // CSS fallback (#video-fallback-bg) automatically shows through
+  }
+
+  // ── Handle tab visibility changes ────────────────────────────────
+  function handleVisibilityChange() {
+    const video = getVideo();
+    if (!video) return;
+
+    if (document.hidden) {
+      // Tab hidden — pause to save resources
+      video.pause();
+    } else {
+      // Tab visible again — resume
+      clearTimeout(visibilityTimer);
+      visibilityTimer = setTimeout(() => {
+        if (video.paused) {
+          attemptPlay(video);
+        }
+      }, 300);
+    }
+  }
+
+  // ── Handle video stalling/freezing ──────────────────────────────
+  function handleVideoStall(video) {
+    console.warn('[BgVideo] Video stalled — attempting recovery');
+    const currentTime = video.currentTime;
+    video.load();
+    video.currentTime = currentTime;
+    attemptPlay(video);
+  }
+
+  // ── Main initialization ──────────────────────────────────────────
+  function initVideoBackground() {
+    const video = getVideo();
+    if (!video) {
+      console.warn('[BgVideo] Video element not found');
+      return;
+    }
+
+    // Event: Video ready to play
+    video.addEventListener('canplay', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video can play through without buffering
+    video.addEventListener('canplaythrough', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video loaded enough to start
+    video.addEventListener('loadeddata', () => {
+      if (!isPlaying) attemptPlay(video);
+    });
+
+    // Event: Video ended (shouldn't happen with loop, but just in case)
+    video.addEventListener('ended', () => {
+      video.currentTime = 0;
+      attemptPlay(video);
+    });
+
+    // Event: Video error
+    video.addEventListener('error', () => handleVideoError(video));
+
+    // Event: Video stalled
+    video.addEventListener('stalled', () => handleVideoStall(video));
+
+    // Event: Video waiting/buffering
+    video.addEventListener('waiting', () => {
+      // Briefly allow CSS fallback to show if buffering takes too long
+      setTimeout(() => {
+        if (video.readyState < 3 && !isPlaying) {
+          // Still buffering after 3s — show CSS fallback
+          fadeOutVideo(video);
+        }
+      }, 3000);
+    });
+
+    // Tab visibility handling
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Window focus handling (extra safety)
+    window.addEventListener('focus', () => {
+      const v = getVideo();
+      if (v && v.paused) {
+        setTimeout(() => attemptPlay(v), 200);
+      }
+    });
+
+    // Initial play attempt
+    attemptPlay(video);
+
+    // Fallback: Try again after 1s, 3s, 6s regardless
+    [1000, 3000, 6000].forEach(delay => {
+      setTimeout(() => {
+        const v = getVideo();
+        if (v && v.paused && !document.hidden) {
+          attemptPlay(v);
+        }
+      }, delay);
+    });
+  }
+
+  // ── Start when DOM is ready ──────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVideoBackground);
+  } else {
+    initVideoBackground();
+  }
+
+})();
+  </script>
+</body>
+</html>
